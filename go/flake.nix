@@ -12,14 +12,12 @@
 			pkgs = import nixpkgs { inherit system; };
 		in {
 			# This block here is used when running `nix develop`
-			devShells.default = pkgs.mkShell rec {
-				# Update the name to something that suites your project.
-				name = "Test Dev Shell";
 
-				TEST_ENV_VARIABLE = "test";
+			devShells.default = pkgs.mkShellNoCC rec {
+				name = "go dev shell";
 
-				shellHook			= ''
-					echo "Moo"
+				shellHook = ''
+					echo go
 				'';
 
 				buildInputs = with pkgs; [
@@ -28,14 +26,6 @@
 					go-tools
 					gotools
 					golangci-lint
-					kubectl
-					kube-linter
-					k9s
-					awscli2
-					docker
-					yq
-					jq
-					kubernetes-helm
 				];
 			};
 		}
