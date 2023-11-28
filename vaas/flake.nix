@@ -29,6 +29,7 @@
 				];
 
 				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
+
 				AWS_CONFIG_FILE		= ".config/aws/config";
 				AWS_REGION			= "us-west-2";
 				AWS_PROFILE			= "vaas-developer";
@@ -55,7 +56,8 @@
                     '';
 
 				shellHook = ''
-                    pwd
+					# Make sure we have an absolute path for the config files
+					export AWS_CONFIG_FILE="$(pwd)/${AWS_CONFIG_FILE}"
 
                     if [ ! -d .config/aws ]; then
                         mkdir -p .config/aws
