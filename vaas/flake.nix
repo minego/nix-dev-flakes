@@ -31,7 +31,7 @@
 				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
 				AWS_REGION			= "us-west-2";
 				AWS_PROFILE			= "vaas-developer";
-				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#"
+				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
 
 				awsconfigskel = builtins.toFile "aws_config_file" ''
                     [default]
