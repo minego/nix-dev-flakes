@@ -29,6 +29,7 @@
 				];
 
 				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
+				AWS_CONFIG_FILE		= ".config/aws/config";
 				AWS_REGION			= "us-west-2";
 				AWS_PROFILE			= "vaas-developer";
 				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
@@ -54,6 +55,12 @@
                     '';
 
 				shellHook = ''
+                    pwd
+
+                    if [ ! -d .config/aws ]; then
+                        mkdir -p .config/aws
+                        cp ${awsconfigskel} ${AWS_CONFIG_FILE}
+					fi
 					echo "The aws config skeleton: ${awsconfigskel}"
 				'';
 			};
