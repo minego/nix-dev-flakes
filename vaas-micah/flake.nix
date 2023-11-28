@@ -5,7 +5,6 @@
 		utils.url = "github:numtide/flake-utils";
 	};
 
-
 	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.eachSystem [
 		"x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"
 	] (system:
@@ -30,7 +29,7 @@
                     [url "git@gitlab.com:"]
                         insteadOf = https://gitlab.com/
                     [url "git@gitlab.com:venafi/"]
-	                    insteadOf = https://gitlab.com/venafi/
+                        insteadOf = https://gitlab.com/venafi/
                     [init]
                         defaultBranch = main
                     [push]

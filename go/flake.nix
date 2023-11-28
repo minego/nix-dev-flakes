@@ -16,10 +16,6 @@
 			devShells.default = pkgs.mkShellNoCC rec {
 				name = "go dev shell";
 
-				shellHook = ''
-					echo go
-				'';
-
 				buildInputs = with pkgs; [
 					go_1_20
 					gopls

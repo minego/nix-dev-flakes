@@ -21,36 +21,16 @@
 				AWS_PROFILE			= "trustnet-dev";
 				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
 
+				nativeBuildInputs = with pkgs; [
+					makeBinaryWrapper
+				];
+
 				buildInputs = with pkgs; [
-					(
-						pkgs.writeScriptBin "aws-w" ''
-                            #! ${pkgs.bash}/bin/bash
-
-							mkdir -p "$FAKE_HOME_DIR"
-							HOME="$FAKE_HOME_DIR" exec ${pkgs.awscli2}/bin/aws "$@"
-                            ''
-					)
-					(
-						pkgs.writeScriptBin "kubectl" ''
-                            #! ${pkgs.bash}/bin/bash
-
-							mkdir -p "$FAKE_HOME_DIR/.kube/cache"
-							HOME="$FAKE_HOME_DIR" exec ${pkgs.kubectl}/bin/kubectl \
-                                --cache-dir="$FAKE_HOME_DIR/.kube/cache" "$@"
-                            ''
-					)
-					(
-						pkgs.writeScriptBin "k9s" ''
-                            #! ${pkgs.bash}/bin/bash
-
-							mkdir -p "$FAKE_HOME_DIR"
-							HOME="$FAKE_HOME_DIR" exec ${pkgs.k9s}/bin/k9s "$@"
-                            ''
-					)
 					awscli2
+					kubectl
+					k9s
 					kube-linter
 					kubernetes-helm
-					k9s
 
 					docker
 					yq
@@ -58,43 +38,60 @@
 				];
 
 				awsconfigskel = builtins.toFile "aws_config_file" ''
-                    [default]
-                    output = json
-                    region = ${AWS_REGION}
+[default]
+output = json
+region = ${AWS_REGION}
 
-                    [profile trustnet-dev]
-                    sso_session = vaas
-                    sso_account_id = 497086895112
-                    sso_role_name = Vaas.Developer
-                    region = ${AWS_REGION}
-                    output = json
+[profile trustnet-dev]
+sso_session = vaas
+sso_account_id = 497086895112
+sso_role_name = Vaas.Developer
+region = ${AWS_REGION}
+output = json
 
-                    [sso-session vaas]
-                    sso_start_url = https://d-926708eb5a.awsapps.com/start#/
-                    sso_region = ${AWS_REGION}
-                    sso_registration_scopes = sso:account:access
-                    '';
+[sso-session vaas]
+sso_start_url = https://d-926708eb5a.awsapps.com/start#/
+sso_region = ${AWS_REGION}
+sso_registration_scopes = sso:account:access
+'';
 
 				shellHook = ''
-					export FAKE_HOME_DIR="$(pwd)"
+export VAAS_HOME=$(pwd)/.vaas_home
+mkdir -p $VAAS_HOME
 
-                    if [ ! -d $FAKE_HOME_DIR/.aws ]; then
-                        mkdir -p $FAKE_HOME_DIR/.aws
-					fi
 
-					rm -f $FAKE_HOME_DIR/.aws/config
-					cp ${awsconfigskel} $FAKE_HOME_DIR/.aws/config
+# Make wrapped copies of specific binaries that will run with their $HOME
+# environment variable overwritten to be a subdir of this environment
+rm -rf $VAAS_HOME/bin
+mkdir $VAAS_HOME/bin
+export PATH="$VAAS_HOME/bin:$PATH"
 
-					aws-w sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
-					if [[ $? -eq 0 ]]; then
-						echo "Logged in"
-					else
-						echo "Logging in to AWS..."
-						aws-w sso login --profile ${AWS_PROFILE}
-                        aws-w eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
-					fi
-					kubectl config set-context --current --namespace=$DEVSTACK
-				'';
+cp `which aws` $VAAS_HOME/bin/
+wrapProgram $VAAS_HOME/bin/aws --set HOME "$VAAS_HOME"
+
+cp `which kubectl` $VAAS_HOME/bin/
+wrapProgram $VAAS_HOME/bin/kubectl --set HOME "$VAAS_HOME"
+
+cp `which k9s` $VAAS_HOME/bin/
+wrapProgram $VAAS_HOME/bin/k9s --set HOME "$VAAS_HOME"
+
+
+# Setup the base AWS configuration in the local dir based on the skeleton
+mkdir -p $VAAS_HOME/.aws
+rm -f $VAAS_HOME/.aws/config
+cp ${awsconfigskel} $VAAS_HOME/.aws/config
+
+# Test AWS access
+aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+	echo "Already logged into AWS"
+else
+	echo "Logging in to AWS..."
+	aws sso login --profile ${AWS_PROFILE}
+	aws eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
+fi
+kubectl config set-context --current --namespace=$DEVSTACK
+'';
 			};
 		}
 	);
