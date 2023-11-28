@@ -29,12 +29,15 @@
                         rebase = true
                     [url "git@gitlab.com:"]
                         insteadOf = https://gitlab.com/
+                    [url "git@gitlab.com:venafi/"]
+	                    insteadOf = https://gitlab.com/venafi/
                     [init]
                         defaultBranch = main
                     [push]
                         autoSetupRemote = true
                     '';
 
+				GIT_CONFIG_SYSTEM	= "/dev/null";
 				GIT_CONFIG_GLOBAL	= "${gitconfig}";
 				DEVSTACK			= "dev157";
 				HTTPS_PROXY			= "http://prosser.minego.net:8118";

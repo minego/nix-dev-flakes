@@ -15,10 +15,39 @@
 			devShells.default = pkgs.mkShellNoCC rec {
 				name = "vaas dev";
 
-				buildInputs = with pkgs; [
-					awscli2
+				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
 
-					kubectl
+				AWS_REGION			= "us-west-2";
+				AWS_PROFILE			= "trustnet-dev";
+				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
+
+				buildInputs = with pkgs; [
+					(
+						pkgs.writeScriptBin "aws-w" ''
+                            #! ${pkgs.bash}/bin/bash
+
+							mkdir -p "$FAKE_HOME_DIR"
+							HOME="$FAKE_HOME_DIR" exec ${pkgs.awscli2}/bin/aws "$@"
+                            ''
+					)
+					(
+						pkgs.writeScriptBin "kubectl" ''
+                            #! ${pkgs.bash}/bin/bash
+
+							mkdir -p "$FAKE_HOME_DIR/.kube/cache"
+							HOME="$FAKE_HOME_DIR" exec ${pkgs.kubectl}/bin/kubectl \
+                                --cache-dir="$FAKE_HOME_DIR/.kube/cache" "$@"
+                            ''
+					)
+					(
+						pkgs.writeScriptBin "k9s" ''
+                            #! ${pkgs.bash}/bin/bash
+
+							mkdir -p "$FAKE_HOME_DIR"
+							HOME="$FAKE_HOME_DIR" exec ${pkgs.k9s}/bin/k9s "$@"
+                            ''
+					)
+					awscli2
 					kube-linter
 					kubernetes-helm
 					k9s
@@ -28,42 +57,43 @@
 					jq
 				];
 
-				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
-
-				AWS_CONFIG_FILE		= ".config/aws/config";
-				AWS_REGION			= "us-west-2";
-				AWS_PROFILE			= "vaas-developer";
-				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
-
 				awsconfigskel = builtins.toFile "aws_config_file" ''
                     [default]
                     output = json
                     region = ${AWS_REGION}
 
-                    [profile ${AWS_PROFILE}]
-                    sso_start_url = https://d-926708eb5a.awsapps.com/start#
-                    sso_region = ${AWS_REGION}
+                    [profile trustnet-dev]
+                    sso_session = vaas
                     sso_account_id = 497086895112
-                    sso_role_name = VaaS.Developer
+                    sso_role_name = Vaas.Developer
                     region = ${AWS_REGION}
                     output = json
-                    sso_session = ${AWS_PROFILE}
 
-                    [sso-session ${AWS_PROFILE}]
+                    [sso-session vaas]
+                    sso_start_url = https://d-926708eb5a.awsapps.com/start#/
                     sso_region = ${AWS_REGION}
                     sso_registration_scopes = sso:account:access
-                    sso_start_url = https://d-926708eb5a.awsapps.com/start#
                     '';
 
 				shellHook = ''
-					# Make sure we have an absolute path for the config files
-					export AWS_CONFIG_FILE="$(pwd)/${AWS_CONFIG_FILE}"
+					export FAKE_HOME_DIR="$(pwd)"
 
-                    if [ ! -d .config/aws ]; then
-                        mkdir -p .config/aws
-                        cp ${awsconfigskel} ${AWS_CONFIG_FILE}
+                    if [ ! -d $FAKE_HOME_DIR/.aws ]; then
+                        mkdir -p $FAKE_HOME_DIR/.aws
 					fi
-					echo "The aws config skeleton: ${awsconfigskel}"
+
+					rm -f $FAKE_HOME_DIR/.aws/config
+					cp ${awsconfigskel} $FAKE_HOME_DIR/.aws/config
+
+					aws-w sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
+					if [[ $? -eq 0 ]]; then
+						echo "Logged in"
+					else
+						echo "Logging in to AWS..."
+						aws-w sso login --profile ${AWS_PROFILE}
+                        aws-w eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
+					fi
+					kubectl config set-context --current --namespace=$DEVSTACK
 				'';
 			};
 		}
