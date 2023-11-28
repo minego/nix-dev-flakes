@@ -5,6 +5,7 @@
 		utils.url = "github:numtide/flake-utils";
 	};
 
+
 	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.eachSystem [
 		"x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"
 	] (system:
@@ -15,11 +16,7 @@
 			devShells.default = pkgs.mkShellNoCC rec {
 				name = "vaas dev micah";
 
-				GIT_CONFIG_HOME		= ".config/git/";
-				DEVSTACK			= "dev157";
-				HTTPS_PROXY			= "http://prosser.minego.net:8118";
-
-				gitconfig = builtins.toFile "aws_config_file" ''
+				gitconfig = builtins.toFile "gitconfig" ''
                     [user]
                         email = micah.gorrell@venafi.com
                         name = Micah N Gorrell
@@ -38,13 +35,12 @@
                         autoSetupRemote = true
                     '';
 
+				GIT_CONFIG_GLOBAL	= "${gitconfig}";
+				DEVSTACK			= "dev157";
+				HTTPS_PROXY			= "http://prosser.minego.net:8118";
+
 				buildInputs = with pkgs; [
-					(pkgs.writeScriptBin "git" ''
-                        #!${pkgs.bash}/bin/bash
-						export GIT_CONFIG_NOSYSTEM="1"
-						export HOME="${GIT_CONFIG_HOME}"
-                        exec ${pkgs.git}/bin/git "$@"
-					'')
+					git
 					git-lfs
 				];
 			};
