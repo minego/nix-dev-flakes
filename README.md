@@ -18,9 +18,12 @@ environment automatically.
 	echo "extra-experimental-features = nix-command flakes" > .config/nix/nix.conf 
 ```
 
-3. Install a few dependencies that are needed to start:
+3. Install a few dependencies, such as [https://direnv.net/](direnv) that are
+needed to start. This example assumes bash.
 ```
 	nix-shell -i direnv nix-direnv
+	echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+	exec bash
 ```
 
 4. Add the flakes that you'd like to your source tree. This is done by adding
@@ -48,6 +51,11 @@ you'd like the latest.
 	direnv allow
 ```
 
+5. Wait for the setup to complete, and answer each question as prompted. Once
+complete you should be able to build services, deploy to a devstack, run
+kubectl commands, etc.
 
+The environment is reset when you leave the directory that contains the .envrc
+file, and is setup again when you enter it again.
 
 
