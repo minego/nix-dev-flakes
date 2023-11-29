@@ -146,6 +146,10 @@ function resetforce() {
 		rm "$VAAS_ENV" 2>/dev/null
 	fi
 
+	if [ -d "${VAAS_HOME}" ]; then
+		rm -rf ${VAAS_HOME}
+	fi
+
 	if [ -f "${VAAS_ENV}" ]; then
 		return 1
 	fi
