@@ -10,7 +10,7 @@ environment automatically.
 
 ## Setup
 
-1. [https://nixos.org/download](Install nix) on your host OS (Any Linux distro, macOS or WSL in windows)
+1. [Install nix](https://nixos.org/download) on your host OS (Any Linux distro, macOS or WSL in windows)
 
 2. Enable some needed nix options:
 ```
