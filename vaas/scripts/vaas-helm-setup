@@ -10,6 +10,7 @@ if ! vaas-configure check ; then
 	exit 1
 fi
 
+echo -en "Adding helm repo... "
 helm repo add --force-update --username venafi --password $GLAB_TOKEN venafi https://gitlab.com/api/v4/projects/50431710/packages/helm/stable
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to add helm repo.\n\n\n"

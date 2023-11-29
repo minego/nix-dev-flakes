@@ -48,7 +48,7 @@ function ask() {
 
 function askpass() {
 	if [ -n "${!1}" ]; then
-		echo "Keeping existing value for $1: ${!1}"
+		echo "Keeping existing value for $1"
 		return 0
 	fi
 
@@ -72,6 +72,10 @@ function prompt() {
 
 		========================================
 	EOF
+
+	# Sleep a moment to try to prevent direnv showing a
+	# warning about a slow script while we are prompting.
+	sleep 5; echo -en "\r                                                                                \r"
 
 	ask		DEVSTACK		"What is your devstack number? (ie dev123): "
 	ask		DOCKER_USERNAME	"Enter your docker hub username: "

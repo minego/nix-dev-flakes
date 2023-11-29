@@ -90,10 +90,6 @@
                     # Load user options, and prompt if they aren't set
 					eval $(vaas-configure hook)
 					if ! vaas-configure check >/dev/null ; then
-						# Sleep a moment to try to prevent direnv showing a
-						# warning about a slow script while we are prompting.
-						sleep 2; echo -en "\r                                                                                \r"
-
 						if ! vaas-configure prompt; then
 							exit 0
 						fi

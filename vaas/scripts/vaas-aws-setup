@@ -50,12 +50,14 @@ else
 	fi
 fi
 
+echo -en "Configuring k8s to use AWS... "
 aws eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to configure k8s to use aws.\n\n\n"
 	exit 1
 fi
 
+echo -en "Setting default k8s context... "
 kubectl config set-context --current --namespace=$DEVSTACK
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to set the default k8s namespace to your devstack.\n\n\n"
