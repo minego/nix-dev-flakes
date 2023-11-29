@@ -21,7 +21,7 @@ environment automatically.
 3. Install a few dependencies, such as [https://direnv.net/](direnv) that are
 needed to start. This example assumes bash.
 ```
-	nix-shell -i direnv nix-direnv
+	nix-env -i direnv nix-direnv
 	echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 	exec bash
 ```
