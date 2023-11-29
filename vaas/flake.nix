@@ -29,12 +29,43 @@
 					awscli2
 					kubectl
 					k9s
-					kube-linter
 					kubernetes-helm
 
 					docker
+					rootlesskit
+
+					kube-linter
 					yq
 					jq
+
+					(
+        				# Wrapper for make that ensures docker rootless mode is running
+	        			# before running the actual make command.
+		        		#
+        				# This is a very hacky solution, but it works...
+        				pkgs.writeShellScriptBin "make" ''
+                            # Start dockerd-rootless
+                            dockerd-rootless > $VAAS_HOME/dockerd.log 2>&1 &
+                            DOCKERD_PID=$!
+
+                            # Wait until it is ready
+                            while ! docker info >/dev/null 2>&1; do
+                               sleep 0.3
+                            done
+
+                            # Run the actual make command
+                            ${pkgs.gnumake}/bin/make $@
+                            RET=$?
+
+                            # kill dockerd
+                            kill $DOCKERD_PID
+                            while docker info >/dev/null 2>&1; do
+                               sleep 0.3
+                            done
+
+                            exit $RET
+                        ''
+					)
 				];
 
 				awsconfigskel = builtins.toFile "aws_config_file" ''
@@ -57,40 +88,118 @@
 
 				shellHook = ''
                     export VAAS_HOME=$(pwd)/.vaas_home
+                    export VAAS_ENV=$VAAS_HOME/vaas-env
                     mkdir -p $VAAS_HOME
 
-
-                    # Make wrapped copies of specific binaries that will run with their $HOME
-                    # environment variable overwritten to be a subdir of this environment
+                    ###########################################################
+                    # Wrap various tools so that they see $VAAS_HOME as their
+                    # home dir, and keep things out of the real home dir
+                    ###########################################################
                     rm -rf $VAAS_HOME/bin
                     mkdir $VAAS_HOME/bin
                     export PATH="$VAAS_HOME/bin:$PATH"
 
-                    cp `which aws` $VAAS_HOME/bin/
+                    cp $(which aws) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/aws --set HOME "$VAAS_HOME"
 
-                    cp `which kubectl` $VAAS_HOME/bin/
+                    cp $(which kubectl) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/kubectl --set HOME "$VAAS_HOME"
 
-                    cp `which k9s` $VAAS_HOME/bin/
+                    cp $(which k9s) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/k9s --set HOME "$VAAS_HOME"
 
+                    cp $(which helm) $VAAS_HOME/bin/
+                    wrapProgram $VAAS_HOME/bin/helm --set HOME "$VAAS_HOME"
 
-                    # Setup the base AWS configuration in the local dir based on the skeleton
+                    cp $(which docker) $VAAS_HOME/bin/
+                    wrapProgram $VAAS_HOME/bin/docker --set HOME "$VAAS_HOME"
+
+                    cp $(which dockerd) $VAAS_HOME/bin/
+                    wrapProgram $VAAS_HOME/bin/dockerd --set HOME "$VAAS_HOME"
+
+                    cp $(which dockerd-rootless) $VAAS_HOME/bin/
+                    wrapProgram $VAAS_HOME/bin/dockerd-rootless --set HOME "$VAAS_HOME" \
+                            --add-flags "--data-root $VAAS_HOME/docker"
+
+                    ###########################################################
+                    # Prompt for user specific options
+                    ###########################################################
+                    if [ ! -f "$VAAS_ENV" ]; then
+                        if [ ! -n "$DEVSTACK" ]; then
+                            read -p "What is your devstack number? (ie dev123): "	DEVSTACK
+                        fi
+                        if [ ! -n "$DOCKER_USERNAME" ]; then
+                            read -p "Enter your docker hub username: "				DOCKER_USERNAME
+                        fi
+                        if [ ! -n "$DOCKER_TOKEN" ]; then
+                            read -p "Enter your docker access token: " -s			DOCKER_TOKEN
+                            echo
+                        fi
+                        if [ ! -n "$GLAB_TOKEN" ]; then
+                            read -p "Enter your private gitlab access token: " -s	GLAB_TOKEN
+                            echo
+                        fi
+
+                        # Save the options do we don't have to prompt next time
+                        echo "DEVSTACK=\"$DEVSTACK\""                > "$VAAS_ENV"
+                        echo "DOCKER_USERNAME=\"$DOCKER_USERNAME\"" >> "$VAAS_ENV"
+                        echo "DOCKER_TOKEN=\"$DOCKER_TOKEN\""       >> "$VAAS_ENV"
+                        echo "GLAB_TOKEN=\"$GLAB_TOKEN\""           >> "$VAAS_ENV"
+                    else
+                        # Load the previously stored options
+                        . "$VAAS_ENV"
+                    fi
+
+                    ###########################################################
+                    # Login to docker
+                    ###########################################################
+                    echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                    if [[ $? -ne 0 ]]; then
+                        echo "ERROR: Failed to login to docker."
+                        rm -i "$VAAS_ENV"
+                        exit 1
+                    fi
+
+                    ###########################################################
+                    # Ensure we have the helm repo added
+                    ###########################################################
+                    helm repo add --force-update --username venafi --password $GLAB_TOKEN venafi https://gitlab.com/api/v4/projects/50431710/packages/helm/stable
+                    if [[ $? -ne 0 ]]; then
+                        echo "ERROR: Failed to add helm repo."
+                        rm -i "$VAAS_ENV"
+                        exit 1
+                    fi
+
+                    ###########################################################
+                    # Setup the base AWS configuration (based on the skeleton above)
+                    ###########################################################
                     mkdir -p $VAAS_HOME/.aws
                     rm -f $VAAS_HOME/.aws/config
                     cp ${awsconfigskel} $VAAS_HOME/.aws/config
 
-                    # Test AWS access
+                    ###########################################################
+                    # Test AWS access; Login again if needed
+                    ###########################################################
                     aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
                     if [[ $? -eq 0 ]]; then
-	                    echo "Already logged into AWS"
+                        echo "Already logged into AWS"
                     else
-	                    echo "Logging in to AWS..."
-	                    aws sso login --profile ${AWS_PROFILE}
-	                    aws eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
+                        echo "Logging in to AWS..."
+                        aws sso login --profile ${AWS_PROFILE}
+
+                        if [[ $? -ne 0 ]]; then
+                            echo "ERROR: Failed to login to AWS."
+                            rm -i "$VAAS_ENV"
+                            exit 1
+                        fi
                     fi
+
+                    aws eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
                     kubectl config set-context --current --namespace=$DEVSTACK
+
+                    echo ""
+                    echo "SUCCESS: VaaS development environment is now ready."
+                    echo ""
                     '';
 			};
 		}
