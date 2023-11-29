@@ -31,15 +31,19 @@ The following example will enable all the build tools needed for VaaS go
 service development, and all of the tools needed to deploy to a VaaS devstack,
 including AWS CLI, docker (rootless and isolated), k8s, etc.
 
+You may included additional flakes as well for things such as installing your
+preferred editor, etc.
+
 Each flake references a specific git revision, so your environment will stay
-exactly the same until you update the revision.
+exactly the same until you update the revision. The revision may be omitted if
+you'd like the latest.
 
 ```
 	mkdir -p ~src/vaas
 	cd ~/src/vaas
 
-	echo 'use flake "github:minego/nix-dev-flakes/c0223e38160c68a1cdc7b2e635bf0d148189d867?dir=go"'   >  .envrc
-	echo 'use flake "github:minego/nix-dev-flakes/c0223e38160c68a1cdc7b2e635bf0d148189d867?dir=vaas"' >> .envrc
+	echo 'use flake "github:minego/nix-dev-flakes/e68be88?dir=go"'   >  .envrc
+	echo 'use flake "github:minego/nix-dev-flakes/e68be88?dir=vaas"' >> .envrc
 
 	direnv allow
 ```
