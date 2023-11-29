@@ -14,9 +14,11 @@ timeout 5 vaas-docker-rootless-start
 if [ $? -eq 124 ]; then
 	echo -en "ERROR: Could not start rootless docker\n\n"
 	read -e -p "Would you like to see the dockerd-rootless log? [y/N] " choice
+
 	if [[ "$choice" == [Yy]* ]]; then
 		cat $VAAS_HOME/dockerd.log
 	fi
+	timeout 15 vaas-docker-rootless-stop
 	exit 1
 fi
 
@@ -24,7 +26,8 @@ echo -en "Docker Login... "
 echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin 2>/dev/null
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to login to docker.\n\n"
-	. vaas-reset
+	vaas-configure reset
+	timeout 15 vaas-docker-rootless-stop
 	exit 1
 fi
 
@@ -32,7 +35,8 @@ fi
 docker search venafi | grep venafi\/ >/dev/null
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
-	. vaas-reset
+	vaas-configure reset
+	timeout 15 vaas-docker-rootless-stop
 	exit 1
 fi
 

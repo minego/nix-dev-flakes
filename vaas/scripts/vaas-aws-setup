@@ -46,7 +46,7 @@ else
 
 	if [[ $? -ne 0 ]]; then
 		echo -en "ERROR: Failed to login to AWS.\n\n\n"
-		. vaas-reset
+		vaas-configure reset
 		exit 1
 	fi
 fi

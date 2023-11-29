@@ -15,7 +15,7 @@ helm repo add --force-update --username venafi --password $GLAB_TOKEN venafi htt
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to add helm repo.\n\n\n"
 
-	. vaas-reset
+	vaas-configure reset
 	exit 1
 fi
 
