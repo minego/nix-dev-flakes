@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+# vaas-reset
+#
+# Script to help unconfigure the required developer
+# options needed for this environment
+#
+# This should be called as:
+#		. vaas-reset
+
+exec vaas-configure reset
+

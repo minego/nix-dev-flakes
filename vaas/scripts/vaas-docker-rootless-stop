@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# vaas-docker-rootless-stop
+#
+# Helper script to stop a rootless dockerd that was
+# started with vaas-docker-rootless-start
+
+ps -p $(vaas-docker-rootless-pid) >/dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+	# It isn't running
+	exit 0
+fi
+
+# kill dockerd and wait for it to exit
+PID=$(vaas-docker-rootless-pid)
+while (kill $PID >/dev/null 2>&1); do
+	sleep 0.3
+done
+
+rm -f $VAAS_HOME/dockerd.pid >/dev/null 2>&1
+
+exit 0
+

@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# vaas-helm-setup
+#
+# Script to help ensure that helm is ready to use for development, which
+# entails adding our repo on gitlab, which requires a gitlab token
+
+eval $(vaas-configure hook)
+if ! vaas-configure check ; then
+	exit 1
+fi
+
+helm repo add --force-update --username venafi --password $GLAB_TOKEN venafi https://gitlab.com/api/v4/projects/50431710/packages/helm/stable
+if [[ $? -ne 0 ]]; then
+	echo -en "ERROR: Failed to add helm repo.\n\n\n"
+
+	. vaas-reset
+	exit 1
+fi
+
+exit 0
+
+

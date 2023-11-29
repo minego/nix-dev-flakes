@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+
+# Wrapper for make that ensures docker rootless mode is running
+# before running the actual make command.
+#
+# This is a very hacky solution, but it works...
+
+# The first `make` in the path is this script, but we don't want to recurse so
+# find the next entry, which should be gnu make
+MAKEPRG=`which -a make | head -n 2 | tail -n 1`
+
+timeout 5 vaas-docker-rootless-start
+if [ $? -eq 124 ]; then
+	echo "ERROR: Could not start rootless docker"
+	exit 1
+fi
+
+# Run the actual make command
+${MAKEPRG} $@
+RET=$?
+
+# kill dockerd
+timeout 15 vaas-docker-rootless-stop
+if [ $? -eq 124 ]; then
+	echo "ERROR: Could not stop rootless docker"
+	exit 1
+fi
+
+exit $RET
+

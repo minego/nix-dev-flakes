@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+
+# vaas-docker-setup
+#
+# Script to help ensure that docker is ready to use for development, which
+# entails logging into docker hub.
+
+eval $(vaas-configure hook)
+if ! vaas-configure check ; then
+	exit 1
+fi
+
+timeout 5 vaas-docker-rootless-start
+if [ $? -eq 124 ]; then
+	echo -en "ERROR: Could not start rootless docker\n\n"
+	read -e -p "Would you like to see the dockerd-rootless log? [y/N] " choice
+	if [[ "$choice" == [Yy]* ]]; then
+		cat $VAAS_HOME/dockerd.log
+	fi
+	exit 1
+fi
+
+echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+if [[ $? -ne 0 ]]; then
+	echo -en "ERROR: Failed to login to docker.\n\n"
+	. vaas-reset
+	exit 1
+fi
+
+ # kill dockerd
+timeout 15 vaas-docker-rootless-stop
+if [ $? -eq 124 ]; then
+	echo -en "ERROR: Could not stop rootless docker\n\n\n"
+	exit 1
+fi
+
+exit 0
+
