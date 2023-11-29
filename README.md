@@ -42,7 +42,7 @@ exactly the same until you update the revision. The revision may be omitted if
 you'd like the latest.
 
 ```
-	mkdir -p ~src/vaas
+	mkdir -p ~/src/vaas
 	cd ~/src/vaas
 
 	echo 'use flake "github:minego/nix-dev-flakes/e68be88?dir=go"'   >  .envrc
