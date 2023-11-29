@@ -62,7 +62,9 @@
                     export PATH="$VAAS_HOME/bin:$PATH"
 
                     cp $(which aws) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/aws --set HOME "$VAAS_HOME"
+                    wrapProgram $VAAS_HOME/bin/aws							\
+							--add-flags "--profile $AWS_PROFILE"			\
+							--set HOME "$VAAS_HOME"
 
                     cp $(which kubectl) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/kubectl --set HOME "$VAAS_HOME"
