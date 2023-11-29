@@ -28,6 +28,14 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
+# Verify that we can access venafi images
+docker search venafi | grep venafi\/ >/dev/null
+if [[ $? -ne 0 ]]; then
+	echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
+	. vaas-reset
+	exit 1
+fi
+
  # kill dockerd
 timeout 15 vaas-docker-rootless-stop
 if [ $? -eq 124 ]; then

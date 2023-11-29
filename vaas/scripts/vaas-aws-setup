@@ -36,11 +36,12 @@ EOF
 ###########################################################
 # Test AWS access; Login again if needed
 ###########################################################
+echo -en "Checking AWS access...         "
 aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
-	echo "Already logged into AWS"
+	echo "Success"
 else
-	echo "Logging in to AWS..."
+	echo "Logging in"
 	aws sso login --profile ${AWS_PROFILE}
 
 	if [[ $? -ne 0 ]]; then
@@ -50,7 +51,7 @@ else
 	fi
 fi
 
-echo -en "Configuring k8s to use AWS... "
+echo -en "Configuring k8s to use AWS...  "
 aws eks --region ${AWS_REGION} update-kubeconfig --name dev01 --role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
 if [[ $? -ne 0 ]]; then
 	echo -en "ERROR: Failed to configure k8s to use aws.\n\n\n"
