@@ -45,7 +45,7 @@
         				# This is a very hacky solution, but it works...
         				pkgs.writeShellScriptBin "make" ''
                             # Start dockerd-rootless
-                            dockerd-rootless > $VAAS_HOME/dockerd.log 2>&1 &
+                            dockerd-rootless -G $(id -g) > $VAAS_HOME/dockerd.log 2>&1 &
                             DOCKERD_PID=$!
 
                             # Wait until it is ready
@@ -112,14 +112,16 @@
                     wrapProgram $VAAS_HOME/bin/helm --set HOME "$VAAS_HOME"
 
                     cp $(which docker) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/docker --set HOME "$VAAS_HOME"
+                    wrapProgram $VAAS_HOME/bin/docker --set HOME "$VAAS_HOME" \
+                            --set DOCKER_HOST "unix://$VAAS_HOME/docker.sock"
 
                     cp $(which dockerd) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/dockerd --set HOME "$VAAS_HOME"
 
                     cp $(which dockerd-rootless) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/dockerd-rootless --set HOME "$VAAS_HOME" \
-                            --add-flags "--data-root $VAAS_HOME/docker"
+                            --add-flags "--data-root $VAAS_HOME/docker" \
+                            --add-flags "-H unix://$VAAS_HOME/docker.sock"
 
                     ###########################################################
                     # Prompt for user specific options
