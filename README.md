@@ -45,8 +45,8 @@ you'd like the latest.
 	mkdir -p ~/src/vaas
 	cd ~/src/vaas
 
-	echo 'use flake "github:minego/nix-dev-flakes/f26f4c7?dir=go"'   >  .envrc
-	echo 'use flake "github:minego/nix-dev-flakes/f26f4c7?dir=vaas"' >> .envrc
+	echo 'use flake "github:minego/nix-dev-flakes/f70121d?dir=go"'   >  .envrc
+	echo 'use flake "github:minego/nix-dev-flakes/f70121d?dir=vaas"' >> .envrc
 
 	direnv allow
 ```
