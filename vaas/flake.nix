@@ -1,7 +1,7 @@
 {
 	description = "My nix flake to help with various development environments";
 	inputs = {
-		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+		nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
 		utils.url = "github:numtide/flake-utils";
 	};
 
@@ -76,7 +76,9 @@
                     wrapProgram $VAAS_HOME/bin/helm --set HOME "$VAAS_HOME"
 
                     cp $(which docker) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/docker --set HOME "$VAAS_HOME" \
+                    wrapProgram $VAAS_HOME/bin/docker						\
+							--set HOME "$VAAS_HOME"							\
+							--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
                             --set DOCKER_HOST "unix://$VAAS_HOME/docker.sock"
 
                     cp $(which dockerd) $VAAS_HOME/bin/
@@ -87,7 +89,9 @@
 							--set HOME "$VAAS_HOME"							\
 							--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
                             --add-flags "--data-root $VAAS_HOME/docker"		\
-                            --add-flags "-H unix://$VAAS_HOME/docker.sock"
+                            --add-flags "-H unix://$VAAS_HOME/docker.sock"	\
+							--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX false \
+							--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP false
 
                     # Load user options, and prompt if they aren't set
 					eval $(vaas-configure hook)
