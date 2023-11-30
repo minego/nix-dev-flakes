@@ -5,9 +5,7 @@
 		utils.url = "github:numtide/flake-utils";
 	};
 
-	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.eachSystem [
-		"x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"
-	] (system:
+	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.eachDefaultSystem (system:
 		let
 			pkgs = import nixpkgs { inherit system; };
 		in {
@@ -112,7 +110,10 @@
                     vaasdev aws		setup || exit 0
 
 					# Enable bash completion for 'vaasdev'
-					source "$(dirname `which vaasdev`)/completely.bash"
+					which complete >/dev/null 2>&1
+					if [ $? -eq 0 ]; then
+						source "$(dirname `which vaasdev`)/completely.bash"
+					fi
 
                     echo ""
 					echo -e "SUCCESS: \033[0;33mYour VaaS development environment is now ready.\033[0m"
