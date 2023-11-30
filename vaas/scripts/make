@@ -5,25 +5,35 @@
 #
 # This is a very hacky solution, but it works...
 
+# Simple helper to wrap 'which' but silently
+function inpath() {
+	which $1 >/dev/null 2>&1
+	return $?
+}
+
 # The first `make` in the path is this script, but we don't want to recurse so
 # find the next entry, which should be gnu make
 MAKEPRG=`which -a make | head -n 2 | tail -n 1`
 
-timeout 5 vaasdev docker start
-if [ $? -eq 124 ]; then
-	echo "ERROR: Could not start rootless docker"
-	exit 1
+if inpath dockerd-rootless; then
+	timeout 5 vaasdev docker start
+	if [ $? -eq 124 ]; then
+		echo "ERROR: Could not start rootless docker"
+		exit 1
+	fi
 fi
 
 # Run the actual make command
 ${MAKEPRG} $@
 RET=$?
 
-# kill dockerd
-timeout 15 vaasdev docker stop
-if [ $? -eq 124 ]; then
-	echo "ERROR: Could not stop rootless docker"
-	exit 1
+if inpath dockerd-rootless; then
+	# kill dockerd
+	timeout 15 vaasdev docker stop
+	if [ $? -eq 124 ]; then
+		echo "ERROR: Could not stop rootless docker"
+		exit 1
+	fi
 fi
 
 exit $RET

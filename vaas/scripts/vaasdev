@@ -15,47 +15,89 @@ function main() {
 	fi
 	VAAS_ENV=$(dirname "${VAAS_HOME}")/.vaas_env
 
-	CMD=$1; shift 2>/dev/null
-	SUBCMD=$1; shift 2>/dev/null
+	local verbosity=2
+	local maxverbosity=5
+	local CMD=""
+	local SUB=""
+	declare -a ARGS ARGS=()
+
+	# Allow increasing verbosity with an environment variable
+	if [ -n "$VERBOSITY" ]; then
+		verbosity="${VERBOSITY}"
+	fi
+
+	# Parse our command, subcommand, and global options and remaining command options
+	i=1;
+	while [ $i -le $# ]; do
+		val=${!i}
+
+		case "${val}" in
+			-v|--verbose)
+				verbosity=$((verbosity + 1));
+				;;
+
+			*)
+				if [ ! -n "${CMD}" ]; then
+					CMD=$val
+				elif [ ! -n "${SUB}" ]; then
+					SUB=$val
+				else
+					ARGS+=("$val")
+				fi
+				;;
+		esac
+
+		i=$((i + 1));
+	done
+
+	# Bind file descriptors based on the verbosity output.
+	#
+	# This allows outputting debug to >&3, trace to >&4, etc
+	for v in $(seq 3 $verbosity); do
+		(( "$v" <= "$maxverbosity" )) && eval exec "$v>&2"
+	done
+	for v in $(seq $(( verbosity+1 )) $maxverbosity ); do
+		(( "$v" > "2" )) && eval exec "$v>/dev/null"
+	done
 
 	case $CMD in
 		# config
 		c*|C*)
-			case $SUBCMD in
-				c*)				config_check		$@; return $? ;;
-				d*)				config_dump			$@; return $? ;;
-				h*)				config_hook			$@; return $? ;;
-				pa*)			config_path			$@; return $? ;;
-				pr*)			config_prompt		$@; return $? ;;
-				r*)				config_reset		$@; return $? ;;
-				*)				config_usage		$@; return $? ;;
+			case $SUB in
+				c*)				config_check		${ARGS[@]}; return $? ;;
+				d*)				config_dump			${ARGS[@]}; return $? ;;
+				h*)				config_hook			${ARGS[@]}; return $? ;;
+				pa*)			config_path			${ARGS[@]}; return $? ;;
+				pr*)			config_prompt		${ARGS[@]}; return $? ;;
+				r*)				config_reset		${ARGS[@]}; return $? ;;
+				*)				config_usage		${ARGS[@]}; return $? ;;
 			esac
 			;;
 
 		# docker
 		d*|D*)
-			case $SUBCMD in
-				se*)			docker_setup		$@; return $? ;;
-				sta*)			docker_start		$@; return $? ;;
-				sto*)			docker_stop			$@; return $? ;;
-				p*)				docker_pid			$@; return $? ;;
-				*)				docker_usage		$@; return $? ;;
+			case $SUB in
+				se*)			docker_setup		${ARGS[@]}; return $? ;;
+				sta*)			docker_start		${ARGS[@]}; return $? ;;
+				sto*)			docker_stop			${ARGS[@]}; return $? ;;
+				p*)				docker_pid			${ARGS[@]}; return $? ;;
+				*)				docker_usage		${ARGS[@]}; return $? ;;
 			esac
 			;;
 
 		# helm
 		h*|H*)
-			case $SUBCMD in
-				s*)				helm_setup			$@; return $? ;;
-				*)				helm_usage			$@; return $? ;;
+			case $SUB in
+				s*)				helm_setup			${ARGS[@]}; return $? ;;
+				*)				helm_usage			${ARGS[@]}; return $? ;;
 			esac
 			;;
 
 		# AWS
 		a*|A*)
-			case $SUBCMD in
-				s*)				aws_setup			$@; return $? ;;
-				*)				aws_usage			$@; return $? ;;
+			case $SUB in
+				s*)				aws_setup			${ARGS[@]}; return $? ;;
+				*)				aws_usage			${ARGS[@]}; return $? ;;
 			esac
 			;;
 
@@ -70,7 +112,7 @@ function main() {
 }
 
 function usage() {
-	echo "Usage: vaasdev <cmd> <subcmd>"
+	echo "Usage: vaasdev <cmd> <subcmd> [FLAGS]"
 	echo ""
 	echo "  Commands:"
 	echo "    config        Configure the VaaS developer environment"
@@ -78,6 +120,8 @@ function usage() {
 	echo "    helm          Helm related commands"
 	echo "    aws           AWS related commands"
 	echo ""
+	echo "  Global Flags:"
+	echo "    -v|--verbose	Increase vebosity"
 	echo "Run 'vaasdev <cmd> help' for more information on a command."
 	return 1
 }
@@ -127,6 +171,12 @@ function aws_usage() {
 
 # Helpers
 ################################################################################
+
+# Simple helper to wrap 'which' but silently
+function inpath() {
+	which $1 >/dev/null 2>&1
+	return $?
+}
 
 function ask() {
 	if [ -n "${!1}" ]; then
@@ -183,10 +233,10 @@ function config_reset() {
 	fi
 
 	if [[ "$choice" == [Yy]* ]]; then
-		rm -f "$VAAS_ENV" 2>/dev/null || return $?
+		rm -f "$VAAS_ENV" >&3 2>&3 || return $?
 
 		if [ $go_hard -eq 1 ]; then
-			rm -rf ${VAAS_HOME} || return $?
+			rm -rf ${VAAS_HOME} >&3 2>&3 || return $?
 		fi
 		return 0
 	else
@@ -232,7 +282,7 @@ function config_prompt() {
 
 function config_dump() {
 	# Save the options do we don't have to prompt next time
-	for name in `echo -en $VARS`; do
+	for name in `echo $VARS`; do
 		echo "${name}=\"${!name}\""
 	done
 
@@ -275,20 +325,22 @@ function docker_setup() {
 	# Ensure we have our configuration loaded
 	config_load
 
-	timeout 5 vaasdev docker start
-	if [ $? -eq 124 ]; then
-		echo -en "ERROR: Could not start rootless docker\n\n"
-		read -e -p "Would you like to see the dockerd-rootless log? [y/N] " choice
+	if inpath dockerd-rootless; then
+		timeout 5 vaasdev docker start
+		if [ $? -eq 124 ]; then
+			echo -en "ERROR: Could not start rootless docker\n\n"
+			read -e -p "Would you like to see the dockerd-rootless log? [y/N] " choice
 
-		if [[ "$choice" == [Yy]* ]]; then
-			cat $VAAS_HOME/dockerd.log
+			if [[ "$choice" == [Yy]* ]]; then
+				cat $VAAS_HOME/dockerd.log
+			fi
+			timeout 15 vaasdev docker stop
+			return 1
 		fi
-		timeout 15 vaasdev docker stop
-		return 1
 	fi
 
 	echo -en "Docker Login...                "
-	echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin 2>/dev/null
+	echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin >&3 2>&3
 	if [[ $? -ne 0 ]]; then
 		echo -en "ERROR: Failed to login to docker.\n\n"
 		config_reset
@@ -297,7 +349,7 @@ function docker_setup() {
 	fi
 
 	# Verify that we can access venafi images
-	docker search venafi | grep venafi\/ >/dev/null
+	docker search venafi | grep venafi\/ >&4 2>&4
 	if [[ $? -ne 0 ]]; then
 		echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
 		config_reset
@@ -305,17 +357,24 @@ function docker_setup() {
 		return 1
 	fi
 
-	 # kill dockerd
-	timeout 15 vaasdev docker stop
-	if [ $? -eq 124 ]; then
-		echo -en "ERROR: Could not stop rootless docker\n\n\n"
-		return 1
+	if inpath dockerd-rootless; then
+		 # kill dockerd
+		timeout 15 vaasdev docker stop
+		if [ $? -eq 124 ]; then
+			echo -en "ERROR: Could not stop rootless docker\n\n\n"
+			return 1
+		fi
 	fi
 
 	return 0
 }
 
 function docker_start() {
+	if ! inpath dockerd-rootless; then
+		echo "WARNING: Rootless docker is not supported on this OS; Docker must be configured in your host OS."
+		return 0
+	fi
+
 	ps -p $(docker_pid) >/dev/null 2>&1
 	if [[ $? -eq 0 ]]; then
 		echo "ERROR: dockerd is already running; PID: $(docker_pid)"
@@ -323,10 +382,12 @@ function docker_start() {
 	fi
 
 	# Start dockerd-rootless
+	#
+	# We always want to log, but if verbosity >= 5 then also print
 	dockerd-rootless				\
 		-p $VAAS_HOME/dockerd.pid	\
 		-G $(id -g)					\
-		> $VAAS_HOME/dockerd.log 2>&1 &
+		2>&1 | tee $VAAS_HOME/dockerd.log >&5 &
 	disown
 
 	# Wait until it is ready
@@ -338,6 +399,10 @@ function docker_start() {
 }
 
 function docker_stop() {
+	if ! inpath dockerd-rootless; then
+		return 0
+	fi
+
 	ps -p $(docker_pid) >/dev/null 2>&1
 	if [[ $? -ne 0 ]]; then
 		# It isn't running
@@ -346,15 +411,19 @@ function docker_stop() {
 
 	# kill dockerd and wait for it to exit
 	PID=$(docker_pid)
-	while (kill $PID >/dev/null 2>&1); do
+	while (kill $PID >&3 2>&3); do
 		sleep 0.3
 	done
 
-	rm -f $VAAS_HOME/dockerd.pid >/dev/null 2>&1
+	rm -f $VAAS_HOME/dockerd.pid >&3 2>&3
 	exit 0
 }
 
 function docker_pid() {
+	if ! inpath dockerd-rootless; then
+		return 0
+	fi
+
 	if [ -f "$VAAS_HOME/dockerd.pid" ]; then
 		cat "$VAAS_HOME/dockerd.pid" 2>/dev/null
 	fi
@@ -409,7 +478,7 @@ function aws_setup() {
 	# Test AWS access; Login again if needed
 	###########################################################
 	echo -en "Checking AWS access...         "
-	aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
+	aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >&3 2>&3
 	if [[ $? -eq 0 ]]; then
 		echo "Success"
 	else

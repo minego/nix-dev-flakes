@@ -29,12 +29,10 @@
 					k9s
 					kubernetes-helm
 
-					docker
-					rootlesskit
-
 					kube-linter
 					yq
 					jq
+					coreutils-full # Needed to use 'tee' in scripts
 
 					# Only needed when we need to regenerate the completion file
 					# completely
@@ -50,9 +48,21 @@
 							chmod +x $out/bin/*
 						'';
 					})
-				];
+				] ++ (
+					# We can't setup docker for the user on macOS
+					lib.optionals stdenv.isLinux [
+						pkgs.docker
+						pkgs.rootlesskit
+					]
+				);
 
 				shellHook = ''
+					# Simple helper to wrap 'which' but silently
+					function inpath() {
+						which $1 >/dev/null 2>&1
+						return $?
+					}
+
                     export VAAS_HOME=$(pwd)/.vaas_home
                     mkdir -p $VAAS_HOME
 
@@ -83,17 +93,20 @@
 							--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
                             --set DOCKER_HOST "unix://$VAAS_HOME/docker.sock"
 
-                    cp $(which dockerd) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/dockerd --set HOME "$VAAS_HOME"
+					# We can't use dockerd-rootless on macOS
+					if inpath dockerd-rootless; then
+						cp $(which dockerd) $VAAS_HOME/bin/
+						wrapProgram $VAAS_HOME/bin/dockerd --set HOME "$VAAS_HOME"
 
-                    cp $(which dockerd-rootless) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/dockerd-rootless				\
-							--set HOME "$VAAS_HOME"							\
-							--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
-                            --add-flags "--data-root $VAAS_HOME/docker"		\
-                            --add-flags "-H unix://$VAAS_HOME/docker.sock"	\
-							--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX false \
-							--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP false
+						cp $(which dockerd-rootless) $VAAS_HOME/bin/
+						wrapProgram $VAAS_HOME/bin/dockerd-rootless				\
+								--set HOME "$VAAS_HOME"							\
+								--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
+								--add-flags "--data-root $VAAS_HOME/docker"		\
+								--add-flags "-H unix://$VAAS_HOME/docker.sock"	\
+								--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX false \
+								--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP false
+					fi
 
                     # Load user options, and prompt if they aren't set
 					eval $(vaasdev config hook)
@@ -110,8 +123,7 @@
                     vaasdev aws		setup || exit 0
 
 					# Enable bash completion for 'vaasdev'
-					which complete >/dev/null 2>&1
-					if [ $? -eq 0 ]; then
+					if inpath complete; then
 						source "$(dirname `which vaasdev`)/completely.bash"
 					fi
 
