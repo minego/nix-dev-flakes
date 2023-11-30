@@ -38,6 +38,10 @@
 					yq
 					jq
 
+					# Only needed when we need to regenerate the completion file
+					# completely
+
+					# Install the scripts in the 'scripts' folder
 					(stdenv.mkDerivation {
 						name		= "vaas-helper-scripts";
 						buildInputs	= with pkgs; [ bash gnumake ];
@@ -94,21 +98,24 @@
 							--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP false
 
                     # Load user options, and prompt if they aren't set
-					eval $(vaas-configure hook)
-					if ! vaas-configure check >/dev/null ; then
-						if ! vaas-configure prompt; then
+					eval $(vaasdev config hook)
+					if ! vaasdev config check >/dev/null ; then
+						if ! vaasdev config prompt; then
 							exit 0
 						fi
-						eval $(vaas-configure hook)
+						eval $(vaasdev config hook)
 					fi
 
 					# Setup various bits
-                    vaas-docker-setup	|| exit 0
-                    vaas-helm-setup		|| exit 0
-                    vaas-aws-setup		|| exit 0
+                    vaasdev docker	setup || exit 0
+                    vaasdev helm	setup || exit 0
+                    vaasdev aws		setup || exit 0
+
+					# Enable bash completion for 'vaasdev'
+					source "$(dirname `which vaasdev`)/completely.bash"
 
                     echo ""
-                    echo "SUCCESS: VaaS development environment is now ready."
+					echo -e "SUCCESS: \033[0;33mYour VaaS development environment is now ready.\033[0m"
                     echo ""
                     '';
 			};

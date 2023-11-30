@@ -1,0 +1,32 @@
+vaasdev:
+- config
+- docker
+- helm
+- aws
+- --help
+
+vaasdev config:
+- check
+- dump
+- hook
+- path
+- prompt
+- reset
+- usage
+- --help
+
+vaasdev docker:
+- setup
+- start
+- stop
+- pid
+- usage
+- --help
+
+vaasdev helm:
+- setup
+- --help
+
+vaasdev aws:
+- setup
+- --help

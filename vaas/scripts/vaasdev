@@ -1,0 +1,450 @@
+#!/usr/bin/env sh
+
+# vaasdev
+#
+# Helper for actions needed to prepare a VaaS developer environment
+
+VARS="DEVSTACK\nDOCKER_USERNAME\nDOCKER_TOKEN\nGLAB_TOKEN\n"
+
+function main() {
+	# Main script
+	if [ ! -n "$VAAS_HOME" ]; then
+		echo "ERROR: The VAAS_HOME environment variable must be set"
+		usage
+		return $?
+	fi
+	VAAS_ENV=$(dirname "${VAAS_HOME}")/.vaas_env
+
+	CMD=$1; shift 2>/dev/null
+	SUBCMD=$1; shift 2>/dev/null
+
+	case $CMD in
+		# config
+		c*|C*)
+			case $SUBCMD in
+				c*)				config_check		$@; return $? ;;
+				d*)				config_dump			$@; return $? ;;
+				h*)				config_hook			$@; return $? ;;
+				pa*)			config_path			$@; return $? ;;
+				pr*)			config_prompt		$@; return $? ;;
+				r*)				config_reset		$@; return $? ;;
+				*)				config_usage		$@; return $? ;;
+			esac
+			;;
+
+		# docker
+		d*|D*)
+			case $SUBCMD in
+				se*)			docker_setup		$@; return $? ;;
+				sta*)			docker_start		$@; return $? ;;
+				sto*)			docker_stop			$@; return $? ;;
+				p*)				docker_pid			$@; return $? ;;
+				*)				docker_usage		$@; return $? ;;
+			esac
+			;;
+
+		# helm
+		h*|H*)
+			case $SUBCMD in
+				s*)				helm_setup			$@; return $? ;;
+				*)				helm_usage			$@; return $? ;;
+			esac
+			;;
+
+		# AWS
+		a*|A*)
+			case $SUBCMD in
+				s*)				aws_setup			$@; return $? ;;
+				*)				aws_usage			$@; return $? ;;
+			esac
+			;;
+
+		# Help
+		*)
+			usage
+			return $?
+			;;
+	esac
+
+	return 0
+}
+
+function usage() {
+	echo "Usage: vaasdev <cmd> <subcmd>"
+	echo ""
+	echo "  Commands:"
+	echo "    config        Configure the VaaS developer environment"
+	echo "    docker        Rootless docker related commands"
+	echo "    helm          Helm related commands"
+	echo "    aws           AWS related commands"
+	echo ""
+	echo "Run 'vaasdev <cmd> help' for more information on a command."
+	return 1
+}
+
+function config_usage() {
+	echo "Usage: vaasdev config <subcmd>"
+	echo ""
+	echo "  Sub-Commands:"
+	echo "    prompt        Ask the user for needed values"
+	echo "    reset         Ask the user if they want to clear previously set values"
+	echo "                     --force    Do not prompt before clearing values"
+	echo "                     --hard     Clear the entire \$VAAS_HOME dir as well"
+	echo "    check         Verify that all needed values are loaded"
+	echo "    path          Print to the path to the file that the options are cached in"
+	echo "    dump          Echo the currently loaded options"
+	echo "    hook          Load and echo previously configured options; suitable to be ran as:"
+	echo "                     eval \$\(vasdev config hool\)"
+	return 1
+}
+
+function docker_usage() {
+	echo "Usage: vaasdev docker <subcmd>"
+	echo ""
+	echo "  Sub-Commands:"
+	echo "    setup         Run any needed configuration, and login to docker hub"
+	echo "    start         Start the rootless dockerd daemon"
+	echo "    stop          Stop the rootless dockerd daemon"
+	echo "    pid           Return the pid of the rootless dockerd daemon if it is currently running"
+	return 1
+}
+
+function helm_usage() {
+	echo "Usage: vaasdev helm <subcmd>"
+	echo ""
+	echo "  Sub-Commands:"
+	echo "    setup         Run any needed configuration"
+	return 1
+}
+
+function aws_usage() {
+	echo "Usage: vaasdev aws <subcmd>"
+	echo ""
+	echo "  Sub-Commands:"
+	echo "    setup         Run any needed configuration, and login to AWS"
+	return 1
+}
+
+# Helpers
+################################################################################
+
+function ask() {
+	if [ -n "${!1}" ]; then
+		echo "Keeping existing value for $1: ${!1}"
+		return 0
+	fi
+
+	echo -en "$2"
+	read "$1"
+}
+
+function askpass() {
+	if [ -n "${!1}" ]; then
+		echo "Keeping existing value for $1"
+		return 0
+	fi
+
+	echo -en "$2"
+	read -s "$1"
+	echo
+}
+
+# Config sub-commands
+################################################################################
+# Internal helper to be used by other commands that need the config loaded
+function config_load() {
+	eval $(config_hook)
+	if ! config_check ; then
+		echo "Run 'vaasdev config prompt' to re-enter configuration values"
+		exit 1
+	fi
+}
+
+function config_reset() {
+	local choice=""
+	local go_hard=0
+
+	while [ -n "$1" ]; do
+		case "$1" in
+			"--force")
+				choice="y"
+				;;
+
+			"--hard")
+				go_hard=1
+				;;
+		esac
+
+		shift 2>/dev/null
+	done
+
+	if [ ! -n "$choice" ]; then
+		read -e -p "Reset cached vaas development configuration options? [y/N] " choice
+	fi
+
+	if [[ "$choice" == [Yy]* ]]; then
+		rm -f "$VAAS_ENV" 2>/dev/null || return $?
+
+		if [ $go_hard -eq 1 ]; then
+			rm -rf ${VAAS_HOME} || return $?
+		fi
+		return 0
+	else
+		# They didn't confirm
+		return 1
+	fi
+}
+
+function config_prompt() {
+	cat <<- EOF
+
+		VaaS Developer Environment Configuration
+		========================================
+
+		Please enter the requested options, which are needed to configure your environment for VaaS development.
+
+		The following links may be helpful if you are not sure how to obtain these values.
+
+		https://venafi.atlassian.net/wiki/spaces/CT/pages/1883016018/VaaS+Devstacks
+		https://venafi.atlassian.net/wiki/spaces/CT/pages/1883017678/Dockerhub+Setup
+
+		========================================
+	EOF
+
+	# Sleep a moment to try to prevent direnv showing a
+	# warning about a slow script while we are prompting.
+	sleep 5; echo -en "\r                                                                                \r"
+
+	ask		DEVSTACK		"What is your devstack number? (ie dev123): "
+	ask		DOCKER_USERNAME	"Enter your docker hub username: "
+	askpass	DOCKER_TOKEN	"Enter your docker access token: "
+	askpass	GLAB_TOKEN		"Enter your private gitlab access token: "
+
+	if ! config_check; then
+		echo "ERROR: Not saving configured options, since they were not complete"
+		return 1
+	fi
+
+	# Save the options
+	echo "Saving configured options to: $VAAS_ENV"
+	config_dump > "$VAAS_ENV"
+}
+
+function config_dump() {
+	# Save the options do we don't have to prompt next time
+	for name in `echo -en $VARS`; do
+		echo "${name}=\"${!name}\""
+	done
+
+	return 0
+}
+
+function config_path() {
+	echo "$VAAS_ENV"
+}
+
+function config_check() {
+	RET=0
+
+	for name in `echo -en $VARS`; do
+		if [ ! -n "${!name}" ]; then
+			echo "The ${name} value is not valid: \"${!name}\""
+			RET=1
+		fi
+	done
+
+	if [ $RET -ne 0 ]; then
+		# Print a few blank lines to draw the line towards the errors
+		echo ""
+		echo ""
+	fi
+
+	return $RET
+}
+
+function config_hook() {
+	if [ -f "${VAAS_ENV}" ]; then
+		cat "${VAAS_ENV}" 2>/dev/null | sed 's/^/export /'
+	fi
+	return 0
+}
+
+# Docker sub-commands
+################################################################################
+function docker_setup() {
+	# Ensure we have our configuration loaded
+	config_load
+
+	timeout 5 vaasdev docker start
+	if [ $? -eq 124 ]; then
+		echo -en "ERROR: Could not start rootless docker\n\n"
+		read -e -p "Would you like to see the dockerd-rootless log? [y/N] " choice
+
+		if [[ "$choice" == [Yy]* ]]; then
+			cat $VAAS_HOME/dockerd.log
+		fi
+		timeout 15 vaasdev docker stop
+		return 1
+	fi
+
+	echo -en "Docker Login...                "
+	echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin 2>/dev/null
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Failed to login to docker.\n\n"
+		config_reset
+		timeout 15 vaasdev docker stop
+		return 1
+	fi
+
+	# Verify that we can access venafi images
+	docker search venafi | grep venafi\/ >/dev/null
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
+		config_reset
+		timeout 15 vaasdev docker stop
+		return 1
+	fi
+
+	 # kill dockerd
+	timeout 15 vaasdev docker stop
+	if [ $? -eq 124 ]; then
+		echo -en "ERROR: Could not stop rootless docker\n\n\n"
+		return 1
+	fi
+
+	return 0
+}
+
+function docker_start() {
+	ps -p $(docker_pid) >/dev/null 2>&1
+	if [[ $? -eq 0 ]]; then
+		echo "ERROR: dockerd is already running; PID: $(docker_pid)"
+		return 1
+	fi
+
+	# Start dockerd-rootless
+	dockerd-rootless				\
+		-p $VAAS_HOME/dockerd.pid	\
+		-G $(id -g)					\
+		> $VAAS_HOME/dockerd.log 2>&1 &
+	disown
+
+	# Wait until it is ready
+	while ! docker info >/dev/null 2>&1; do
+		sleep 0.3
+	done
+
+	return 0
+}
+
+function docker_stop() {
+	ps -p $(docker_pid) >/dev/null 2>&1
+	if [[ $? -ne 0 ]]; then
+		# It isn't running
+		return 0
+	fi
+
+	# kill dockerd and wait for it to exit
+	PID=$(docker_pid)
+	while (kill $PID >/dev/null 2>&1); do
+		sleep 0.3
+	done
+
+	rm -f $VAAS_HOME/dockerd.pid >/dev/null 2>&1
+	exit 0
+}
+
+function docker_pid() {
+	if [ -f "$VAAS_HOME/dockerd.pid" ]; then
+		cat "$VAAS_HOME/dockerd.pid" 2>/dev/null
+	fi
+}
+
+# helm sub-commands
+################################################################################
+function helm_setup() {
+	# Ensure we have our configuration loaded
+	config_load
+
+	echo -en "Adding helm repo...            "
+	helm repo add --force-update --username venafi --password $GLAB_TOKEN venafi https://gitlab.com/api/v4/projects/50431710/packages/helm/stable
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Failed to add helm repo.\n\n\n"
+
+		config_reset
+		return 1
+	fi
+
+	return 0
+}
+
+# AWS sub-commands
+################################################################################
+function aws_setup() {
+	# Ensure we have our configuration loaded
+	config_load
+
+	# Create the base configuration file
+	mkdir -p $VAAS_HOME/.aws
+	rm -f $VAAS_HOME/.aws/config
+	cat <<- EOF > $VAAS_HOME/.aws/config
+		[default]
+		output = json
+		region = ${AWS_REGION}
+
+		[profile trustnet-dev]
+		sso_session = vaas
+		sso_account_id = 497086895112
+		sso_role_name = Vaas.Developer
+		region = ${AWS_REGION}
+		output = json
+
+		[sso-session vaas]
+		sso_start_url = https://d-926708eb5a.awsapps.com/start#/
+		sso_region = ${AWS_REGION}
+		sso_registration_scopes = sso:account:access
+	EOF
+
+	###########################################################
+	# Test AWS access; Login again if needed
+	###########################################################
+	echo -en "Checking AWS access...         "
+	aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >/dev/null 2>&1
+	if [[ $? -eq 0 ]]; then
+		echo "Success"
+	else
+		echo "Logging in"
+		aws sso login --profile ${AWS_PROFILE}
+
+		if [[ $? -ne 0 ]]; then
+			echo -en "ERROR: Failed to login to AWS.\n\n\n"
+			config_reset
+			return 1
+		fi
+	fi
+
+	echo -en "Configuring k8s to use AWS...  "
+	aws eks update-kubeconfig		\
+		--name dev01				\
+		--region ${AWS_REGION}		\
+		--profile ${AWS_PROFILE}	\
+		--role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Failed to configure k8s to use aws.\n\n\n"
+		return 1
+	fi
+
+	echo -en "Setting default k8s context... "
+	kubectl config set-context --current --namespace=$DEVSTACK
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Failed to set the default k8s namespace to your devstack.\n\n\n"
+		return 1
+	fi
+
+	return 0
+}
+
+# Call the main function
+################################################################################
+main $@
+exit $?

@@ -9,7 +9,7 @@
 # find the next entry, which should be gnu make
 MAKEPRG=`which -a make | head -n 2 | tail -n 1`
 
-timeout 5 vaas-docker-rootless-start
+timeout 5 vaasdev docker start
 if [ $? -eq 124 ]; then
 	echo "ERROR: Could not start rootless docker"
 	exit 1
@@ -20,7 +20,7 @@ ${MAKEPRG} $@
 RET=$?
 
 # kill dockerd
-timeout 15 vaas-docker-rootless-stop
+timeout 15 vaasdev docker stop
 if [ $? -eq 124 ]; then
 	echo "ERROR: Could not stop rootless docker"
 	exit 1
