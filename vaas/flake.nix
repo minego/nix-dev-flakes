@@ -88,7 +88,14 @@
                     wrapProgram $VAAS_HOME/bin/helm --set HOME "$VAAS_HOME"
 
 					# We can't use dockerd-rootless on macOS
-						if inpath dockerd-rootless; then
+					if inpath dockerd-rootless; then
+						if ! inpath newuidmap; then
+							echo ""
+							echo -e "ERROR: \033[0;33mThe 'uidmap' package was not found.\033[0m"
+							echo ""
+							exit 0
+						fi
+
 						cp $(which docker) $VAAS_HOME/bin/
 						wrapProgram $VAAS_HOME/bin/docker						\
 								--set HOME "$VAAS_HOME"							\
@@ -119,9 +126,17 @@
 					fi
 
 					# Setup various bits
-                    vaasdev docker	setup || exit 0
-                    vaasdev helm	setup || exit 0
-                    vaasdev aws		setup || exit 0
+					if ! vaasdev docker check; then
+						vaasdev docker setup || exit 0
+					fi
+
+					if ! vaasdev helm check; then
+						vaasdev helm setup || exit 0
+					fi
+
+					if ! vaasdev aws check; then
+						vaasdev aws setup || exit 0
+					fi
 
 					# Enable bash completion for 'vaasdev'
 					if inpath complete; then
