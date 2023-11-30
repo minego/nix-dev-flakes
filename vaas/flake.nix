@@ -104,6 +104,7 @@
 								--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
 								--add-flags "--data-root $VAAS_HOME/docker"		\
 								--add-flags "-H unix://$VAAS_HOME/docker.sock"	\
+								--add-flags "--storage-driver fuse-overlayfs"	\
 								--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX false \
 								--set DOCKERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP false
 					fi
