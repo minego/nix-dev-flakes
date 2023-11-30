@@ -4,8 +4,6 @@
 #
 # Helper for actions needed to prepare a VaaS developer environment
 
-VARS="DEVSTACK\nDOCKER_USERNAME\nDOCKER_TOKEN\nGLAB_TOKEN\n"
-
 function main() {
 	# Main script
 	if [ ! -n "$VAAS_HOME" ]; then
@@ -77,6 +75,8 @@ function main() {
 		# docker
 		d*|D*)
 			case $SUB in
+				c*)				docker_check		${ARGS[@]}; return $? ;;
+				l*)				docker_login		${ARGS[@]}; return $? ;;
 				se*)			docker_setup		${ARGS[@]}; return $? ;;
 				sta*)			docker_start		${ARGS[@]}; return $? ;;
 				sto*)			docker_stop			${ARGS[@]}; return $? ;;
@@ -150,6 +150,8 @@ function docker_usage() {
 	echo "    start         Start the rootless dockerd daemon"
 	echo "    stop          Stop the rootless dockerd daemon"
 	echo "    pid           Return the pid of the rootless dockerd daemon if it is currently running"
+	echo "    login         Perform a docker login with the stored credentials"
+	echo "    check         Verify that docker is setup properly"
 	return 1
 }
 
@@ -280,6 +282,12 @@ function config_prompt() {
 	config_dump > "$VAAS_ENV"
 }
 
+VARS="DEVSTACK\nDOCKER_USERNAME\nDOCKER_TOKEN\nGLAB_TOKEN\n"
+if ! inpath dockerd-rootless; then
+	# If we aren't doing rootless docker then we don't need to ask for docker creds
+	VARS="DEVSTACK\nGLAB_TOKEN\n"
+fi
+
 function config_dump() {
 	# Save the options do we don't have to prompt next time
 	for name in `echo $VARS`; do
@@ -325,7 +333,15 @@ function docker_setup() {
 	# Ensure we have our configuration loaded
 	config_load
 
-	if inpath dockerd-rootless; then
+	if ! inpath dockerd-rootless; then
+		# On a system where we can't use rootless docker, so just verify they
+		# have already setup docker properly.
+		if ! docker_check ; then
+			echo -en "WARNING: Rootless docker is not supported on this OS. Please install docker desktop and login before retrying."
+			config_reset
+			return 1
+		fi
+	else
 		timeout 5 vaasdev docker start
 		if [ $? -eq 124 ]; then
 			echo -en "ERROR: Could not start rootless docker\n\n"
@@ -339,31 +355,46 @@ function docker_setup() {
 		fi
 	fi
 
+	if ! docker_login ; then
+		config_reset
+		timeout 15 vaasdev docker stop
+		return 1
+	fi
+
+	if ! docker_check ; then
+		config_reset
+		timeout 15 vaasdev docker stop
+		return 1
+	fi
+
+	 # kill dockerd
+	timeout 15 vaasdev docker stop
+	if [ $? -eq 124 ]; then
+		echo -en "ERROR: Could not stop rootless docker\n\n\n"
+		return 1
+	fi
+
+	return 0
+}
+
+function docker_check() {
+	# Verify that we can access venafi images
+	docker search venafi | grep venafi\/ >&4 2>&4
+
+	if [[ $? -ne 0 ]]; then
+		echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
+		return 1
+	fi
+
+	return 0
+}
+
+function docker_login() {
 	echo -en "Docker Login...                "
 	echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin >&3 2>&3
 	if [[ $? -ne 0 ]]; then
 		echo -en "ERROR: Failed to login to docker.\n\n"
-		config_reset
-		timeout 15 vaasdev docker stop
 		return 1
-	fi
-
-	# Verify that we can access venafi images
-	docker search venafi | grep venafi\/ >&4 2>&4
-	if [[ $? -ne 0 ]]; then
-		echo -en "ERROR: Unable to access venafi images; Does your account have access?\n\n"
-		config_reset
-		timeout 15 vaasdev docker stop
-		return 1
-	fi
-
-	if inpath dockerd-rootless; then
-		 # kill dockerd
-		timeout 15 vaasdev docker stop
-		if [ $? -eq 124 ]; then
-			echo -en "ERROR: Could not stop rootless docker\n\n\n"
-			return 1
-		fi
 	fi
 
 	return 0

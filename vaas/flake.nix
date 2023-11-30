@@ -87,14 +87,14 @@
                     cp $(which helm) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/helm --set HOME "$VAAS_HOME"
 
-                    cp $(which docker) $VAAS_HOME/bin/
-                    wrapProgram $VAAS_HOME/bin/docker						\
-							--set HOME "$VAAS_HOME"							\
-							--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
-                            --set DOCKER_HOST "unix://$VAAS_HOME/docker.sock"
-
 					# We can't use dockerd-rootless on macOS
-					if inpath dockerd-rootless; then
+						if inpath dockerd-rootless; then
+						cp $(which docker) $VAAS_HOME/bin/
+						wrapProgram $VAAS_HOME/bin/docker						\
+								--set HOME "$VAAS_HOME"							\
+								--set XDG_RUNTIME_DIR "$VAAS_HOME/run"			\
+								--set DOCKER_HOST "unix://$VAAS_HOME/docker.sock"
+
 						cp $(which dockerd) $VAAS_HOME/bin/
 						wrapProgram $VAAS_HOME/bin/dockerd --set HOME "$VAAS_HOME"
 
