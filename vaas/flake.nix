@@ -32,6 +32,7 @@
 					kube-linter
 					yq
 					jq
+					curl
 					coreutils-full # Needed to use 'tee' in scripts
 
 					# Only needed when we need to regenerate the completion file
@@ -138,14 +139,19 @@
 						vaasdev aws setup || exit 0
 					fi
 
+
 					# Enable bash completion for 'vaasdev'
 					if inpath complete; then
 						source "$(dirname `which vaasdev`)/completely.bash"
 					fi
 
-                    echo ""
+					echo ""
 					echo -e "SUCCESS: \033[0;33mYour VaaS development environment is now ready.\033[0m"
-                    echo ""
+					curl --head --connect-timeout 5 https://jenkins.eng.venafi.com/ >/dev/null 2>&1
+					if [ $? -ne 0 ]; then
+						echo -e "WARNING: \033[0;31mYou do not appear to be connected to the VPN!\033[0m"
+					fi
+					echo ""
                     '';
 			};
 		}
