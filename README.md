@@ -10,15 +10,22 @@ environment automatically.
 
 ## Setup
 
-1. [Install nix](https://nixos.org/download) on your host OS (Any Linux distro, macOS or WSL in windows)
+1. Install the 'uidmap' package on your host Linux distro. This is needed to
+use rootless docker, and is the only Linux dependency that can't currently be
+installed automatically using nix.
 
-2. Enable some needed nix options:
+2. If you are running on macOS then rootless docker does not work. You must
+install and configure docker desktop before hand.
+
+3. [Install nix](https://nixos.org/download) on your host OS (Any Linux distro, macOS or WSL in windows)
+
+4. Enable some needed nix options:
 ```
 	mkdir -p .config/nix/
 	echo "extra-experimental-features = nix-command flakes" > .config/nix/nix.conf 
 ```
 
-3. Install a few dependencies, such as [https://direnv.net/](direnv) that are
+5. Install a few dependencies, such as [https://direnv.net/](direnv) that are
 needed to start. This example assumes bash.
 ```
 	nix-env -i direnv nix-direnv
@@ -26,7 +33,7 @@ needed to start. This example assumes bash.
 	exec bash
 ```
 
-4. Add the flakes that you'd like to your source tree. This is done by adding
+6. Add the flakes that you'd like to your source tree. This is done by adding
 a reference to this repo for each flake that you would like to include in your
 development environment.
 
@@ -51,7 +58,7 @@ you'd like the latest.
 	direnv allow
 ```
 
-5. Wait for the setup to complete, and answer each question as prompted. Once
+7. Wait for the setup to complete, and answer each question as prompted. Once
 complete you should be able to build services, deploy to a devstack, run
 kubectl commands, etc.
 
