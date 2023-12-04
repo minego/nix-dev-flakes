@@ -5,7 +5,7 @@
 		utils.url = "github:numtide/flake-utils";
 	};
 
-	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.allSystems (system:
+	outputs = { self, nixpkgs, ... }@inputs: inputs.utils.lib.eachDefaultSystem (system:
 		let
 			pkgs = import nixpkgs { inherit system; };
 			frameworks = pkgs.darwin.apple_sdk.frameworks;
