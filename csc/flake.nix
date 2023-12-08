@@ -20,6 +20,8 @@
 			buildDeps = with pkgs; [
 				libuuid
 				doxygen
+				cmake
+				gdb
 			] ++ lib.optionals pkgs.stdenv.isDarwin [
 				frameworks.Foundation
 				frameworks.Security
