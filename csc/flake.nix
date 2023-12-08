@@ -21,8 +21,11 @@
 				libuuid
 				doxygen
 				cmake
+			] ++ lib.optionals pkgs.stdenv.isLinux [
 				gdb
 			] ++ lib.optionals pkgs.stdenv.isDarwin [
+				lldb
+
 				frameworks.Foundation
 				frameworks.Security
 				frameworks.Cocoa
