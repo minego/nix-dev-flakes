@@ -22,6 +22,7 @@
 				doxygen
 				cmake
 				pkg-config
+				ninja
 			] ++ lib.optionals pkgs.stdenv.isLinux [
 				gdb
 			] ++ lib.optionals pkgs.stdenv.isDarwin [
