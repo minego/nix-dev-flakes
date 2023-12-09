@@ -21,6 +21,7 @@
 				libuuid
 				doxygen
 				cmake
+				pkg-config
 			] ++ lib.optionals pkgs.stdenv.isLinux [
 				gdb
 			] ++ lib.optionals pkgs.stdenv.isDarwin [
