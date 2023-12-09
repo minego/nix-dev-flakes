@@ -53,6 +53,7 @@
 			devShells.default = pkgs.mkShell rec {
 				# Update the name to something that suites your project.
 				name				= "csc";
+				buildInputs			= buildDeps;
 				packages			= buildDeps;
 				shellHook			= ''
 					export LD=$CC
