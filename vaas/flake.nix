@@ -36,6 +36,7 @@
 					coreutils-full	# Needed to use 'tee' in scripts
 
 					postgresql		# Needed for the psql client
+					goose			# go tool for database setup/migration
 
 					# Only needed when we need to regenerate the completion file
 					# completely
