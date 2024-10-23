@@ -10,7 +10,7 @@
 			pkgs = import nixpkgs { inherit system; };
 		in {
 			# This block here is used when running `nix develop`
-			devShells.default = pkgs.mkShellNoCC rec {
+			devShells.default = pkgs.mkShellNoCC {
 				name = "vaas dev";
 
 				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
@@ -33,7 +33,9 @@
 					yq
 					jq
 					curl
-					coreutils-full # Needed to use 'tee' in scripts
+					coreutils-full	# Needed to use 'tee' in scripts
+
+					postgresql		# Needed for the psql client
 
 					# Only needed when we need to regenerate the completion file
 					# completely
