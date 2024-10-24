@@ -500,11 +500,22 @@ function aws_setup() {
 		region = ${AWS_REGION}
 
 		[profile trustnet-dev]
-		sso_session = vaas
+		sso_start_url = https://d-926708eb5a.awsapps.com/start#/
+		sso_region = us-west-2
 		sso_account_id = 497086895112
 		sso_role_name = Vaas.Developer
 		region = ${AWS_REGION}
 		output = json
+		cli_pager=
+
+		[profile condor-dev]
+		sso_start_url = https://d-926708eb5a.awsapps.com/start#/
+		sso_region = us-west-2
+		sso_account_id = 569433869543
+		sso_role_name = CondorDeveloper
+		region = ${AWS_REGION}
+		output = json
+		cli_pager=
 
 		[sso-session vaas]
 		sso_start_url = https://d-926708eb5a.awsapps.com/start#/
