@@ -16,7 +16,6 @@
 				GOPRIVATE			= "bb.eng.venafi.com,gitlab.com/venafi,go.venafi.cloud";
 
 				AWS_REGION			= "us-west-2";
-				AWS_PROFILE			= "trustnet-dev";
 				AWS_SSO_START_URL	= "https://d-926708eb5a.awsapps.com/start#";
 
 				nativeBuildInputs = with pkgs; [
@@ -80,7 +79,6 @@
 
                     cp $(which aws) $VAAS_HOME/bin/
                     wrapProgram $VAAS_HOME/bin/aws							\
-							--add-flags "--profile $AWS_PROFILE"			\
 							--set HOME "$VAAS_HOME"
 
                     cp $(which kubectl) $VAAS_HOME/bin/

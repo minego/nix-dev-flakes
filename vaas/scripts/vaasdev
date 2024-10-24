@@ -542,7 +542,6 @@ function aws_setup() {
 	aws eks update-kubeconfig		\
 		--name dev01				\
 		--region us-west-2			\
-		--profile ${AWS_PROFILE}	\
 		--alias devstacks			\
 		--role-arn arn:aws:iam::497086895112:role/eks/dev01-KubernetesDevelopers
 	if [[ $? -ne 0 ]]; then
@@ -554,7 +553,6 @@ function aws_setup() {
 	aws eks update-kubeconfig		\
 		--name staging-ore-vaas		\
 		--region us-west-2			\
-		--profile ${AWS_PROFILE}	\
 		--alias staging				\
 		--role-arn arn:aws:iam::497086895112:role/eks/staging-ore-vaas-KubernetesDevelopers
 	if [[ $? -ne 0 ]]; then
@@ -566,7 +564,6 @@ function aws_setup() {
 	aws eks update-kubeconfig		\
 		--name eksprodcluster		\
 		--region us-east-1			\
-		--profile ${AWS_PROFILE}	\
 		--alias us-prod-readonly	\
 		--role-arn arn:aws:iam::569433869543:role/eks/k8sprod01-KubernetesDevelopers
 	if [[ $? -ne 0 ]]; then
@@ -578,7 +575,6 @@ function aws_setup() {
 	aws eks update-kubeconfig		\
 		--name prod-fra-vaas		\
 		--region eu-central-1		\
-		--profile ${AWS_PROFILE}	\
 		--alias eu-prod-readonly	\
 		--role-arn arn:aws:iam::569433869543:role/eks/prod-fra-vaas-KubernetesDevelopers
 	if [[ $? -ne 0 ]]; then
@@ -597,12 +593,12 @@ function aws_setup() {
 }
 
 function aws_check() {
-	aws sts get-caller-identity --profile ${AWS_PROFILE} --no-cli-pager >&3 2>&3
+	aws sts get-caller-identity --no-cli-pager >&3 2>&3
 	return $?
 }
 
 function aws_login() {
-	aws sso login --profile ${AWS_PROFILE}
+	aws sso login
 	return $?
 }
 
