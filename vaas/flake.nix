@@ -26,6 +26,7 @@
 				buildInputs = with pkgs; [
 					awscli2
 					kubectl
+					kubectx
 					k9s
 					kubernetes-helm
 
