@@ -509,11 +509,11 @@ function aws_setup() {
 		cli_pager=
 
 		[profile condor-dev]
-		sso_start_url = https://d-926708eb5a.awsapps.com/start#/
-		sso_region = us-west-2
+		sso_start_url = https://d-906740f971.awsapps.com/start/#
+		sso_region = us-east-1
 		sso_account_id = 569433869543
 		sso_role_name = CondorDeveloper
-		region = ${AWS_REGION}
+		region = us-east-1
 		output = json
 		cli_pager=
 
